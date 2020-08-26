@@ -2,7 +2,7 @@ import { UserResolver } from "./resolvers/user";
 import "reflect-metadata";
 import { PostResolver } from "./resolvers/post";
 import { MikroORM } from "@mikro-orm/core";
-import { __prod__ } from "./constant";
+import { __prod__, COOKIE_NAME } from "./constant";
 import microConfig from "./mikro-orm.config";
 import express from "express";
 import { ApolloServer } from "apollo-server-express";
@@ -31,7 +31,7 @@ const main = async () => {
 
   app.use(
     session({
-      name: "qid",
+      name: COOKIE_NAME,
       store: new RedisStore({ client: redisClient, disableTouch: true }),
       cookie: {
         maxAge: 1000 * 60 * 60 * 24 * 365 * 10, // 10 years
