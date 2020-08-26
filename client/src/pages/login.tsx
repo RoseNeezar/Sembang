@@ -15,13 +15,11 @@ const Login: FC = () => {
   return (
     <Wrapper variants="small">
       <Formik
-        initialValues={{ username: "", password: "" }}
+        initialValues={{ usernameOrEmail: "", password: "" }}
         onSubmit={async (values, { setErrors }) => {
           const response = await login({
-            options: {
-              password: values.password,
-              username: values.username,
-            },
+            usernameOrEmail: values.usernameOrEmail,
+            password: values.password,
           });
           if (response.data?.login.errors) {
             setErrors(toErrorMap(response.data.login.errors));
@@ -34,9 +32,9 @@ const Login: FC = () => {
         {({ isSubmitting }) => (
           <Form>
             <InputField
-              label="Username"
-              name="username"
-              placeholder="username"
+              label="Username or Email"
+              name="usernameOrEmail"
+              placeholder="username or email"
             />
             <Box mt={4}>
               <InputField
