@@ -14,7 +14,6 @@ import {
 import argon2 from "argon2";
 import { EntityManager } from "@mikro-orm/postgresql";
 import { UsernamePasswordInput } from "./UsernamePasswordInput";
-
 import { v4 } from "uuid";
 import { sendEmail } from "../utils/sendEmail";
 
@@ -170,5 +169,52 @@ export class UserResolver {
       `<a href="http://localhost:3000/change-password/${token}">reset password</a>`
     );
     return true;
+  }
+
+  @Mutation(() => UserResponse)
+  async changePassword(
+    @Arg("token") token: string,
+    @Arg("newPassword") newPassword: string,
+    @Ctx() { em, redis, req }: MyContext
+  ): Promise<UserResponse> {
+    if (newPassword.length <= 2) {
+      return {
+        errors: [
+          {
+            field: "newPassword",
+            message: "length must be greater than 2",
+          },
+        ],
+      };
+    }
+    const key = FORGET_PASSWORD_PREFIX + token;
+    const userId = await redis.get(key);
+    if (!userId) {
+      return {
+        errors: [
+          {
+            field: "token",
+            message: "token expired",
+          },
+        ],
+      };
+    }
+
+    const user = await em.findOne(User, { id: parseInt(userId) });
+    if (!user) {
+      return {
+        errors: [
+          {
+            field: "token",
+            message: "user no longer exist",
+          },
+        ],
+      };
+    }
+    user.password = await argon2.hash(newPassword);
+    await em.persistAndFlush(user);
+    redis.del(key);
+    req.session.userId = user.id;
+    return { user };
   }
 }
