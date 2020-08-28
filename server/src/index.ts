@@ -1,5 +1,5 @@
-import { UserResolver } from "./resolvers/user";
 import "reflect-metadata";
+import { UserResolver } from "./resolvers/user";
 import { PostResolver } from "./resolvers/post";
 import { __prod__, COOKIE_NAME } from "./constant";
 import express from "express";
@@ -13,6 +13,7 @@ import cors from "cors";
 import { createConnection } from "typeorm";
 import { User } from "./entities/User";
 import { Post } from "./entities/post";
+import path from "path";
 
 const main = async () => {
   const conn = await createConnection({
@@ -22,9 +23,12 @@ const main = async () => {
     password: "postgres",
     logging: true,
     synchronize: true,
+    migrations: [path.join(__dirname, "./migrations/*")],
     entities: [User, Post],
   });
+  await conn.runMigrations();
 
+  // await Post.delete({});
   const app = express();
 
   const RedisStore = connectRedis(session);
