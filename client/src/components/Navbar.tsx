@@ -40,7 +40,7 @@ const Navbar = () => {
     );
   }
   return (
-    <Flex bg="tomato" p={4}>
+    <Flex bg="tomato" p={4} position="sticky" zIndex={1}>
       <Box ml={"auto"}>{body}</Box>
     </Flex>
   );

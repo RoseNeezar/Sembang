@@ -21,6 +21,7 @@ const InputField: FC<IInputField> = ({
   ...props
 }) => {
   let InputOrTextarea = Input;
+
   if (textarea) {
     InputOrTextarea = Textarea;
   }
@@ -28,7 +29,7 @@ const InputField: FC<IInputField> = ({
   return (
     <FormControl isInvalid={!!error}>
       <FormLabel htmlFor={field.name}>{label}</FormLabel>
-      <Input {...field} {...props} id={field.name} />
+      <InputOrTextarea {...field} {...props} id={field.name} />
       {error ? <FormErrorMessage>{error}</FormErrorMessage> : null}
     </FormControl>
   );
