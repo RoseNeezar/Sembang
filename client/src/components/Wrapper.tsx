@@ -10,6 +10,7 @@ interface IWrapper {
 const Wrapper: FC<IWrapper> = ({ children, variants = "regular" }) => {
   return (
     <Box
+      pt={20}
       mt={8}
       mx="auto"
       maxW={variants === "regular" ? "800px" : "400px"}
