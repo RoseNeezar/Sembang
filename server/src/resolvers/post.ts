@@ -1,3 +1,4 @@
+import { User } from "./../entities/User";
 import { Upvote } from "./../entities/Upvote";
 import { isAuth } from "./../middleware/isAuth";
 import { Post } from "./../entities/post";
@@ -40,51 +41,23 @@ export class PostResolver {
   textSnippet(@Root() root: Post) {
     return root.text.slice(0, 50);
   }
-
-  @Query(() => PaginatedPosts)
-  async posts(
-    @Arg("limit", () => Int) limit: number,
-    @Arg("cursor", () => String, { nullable: true }) cursor: string | null,
-    @Ctx() { req }: MyContext
-  ): Promise<PaginatedPosts> {
-    const realLimit = Math.min(50, limit);
-    const realLimitPlusOne = realLimit + 1;
-    const replacements: any[] = [realLimitPlusOne];
-    if (req.session.userId) {
-      replacements.push(req.session.userId);
+  @FieldResolver(() => User)
+  creator(@Root() post: Post, @Ctx() { userLoader }: MyContext) {
+    return userLoader.load(post.creatorId);
+  }
+  @FieldResolver(() => Int, { nullable: true })
+  async voteStatus(
+    @Root() post: Post,
+    @Ctx() { upvoteLoader, req }: MyContext
+  ) {
+    if (!req.session.userId) {
+      return null;
     }
-    let cursorIdx = 3;
-    if (cursor) {
-      replacements.push(new Date(parseInt(cursor)));
-      cursorIdx = replacements.length;
-    }
-    console.log(replacements, cursorIdx);
-    const posts = await getConnection().query(
-      `
-    select p.*,
-    json_build_object(
-      'id', u.id,
-      'username', u.username,
-      'email', u.email
-    ) creator,
-    ${
-      req.session.userId
-        ? '(select value from upvote where "userId" = $2 and "postId" = p.id) "voteStatus"'
-        : 'null as "voteStatus"'
-    }
-    from post p
-    inner join public.user u on u.id = p."creatorId"
-    ${cursor ? `where p."createdAt" < $${cursorIdx}` : ""}
-    order by p."createdAt" DESC
-    limit $1
-    `,
-      replacements
-    );
-    console.log(replacements, cursorIdx);
-    return {
-      posts: posts.slice(0, realLimit),
-      hasMore: posts.length === realLimitPlusOne,
-    };
+    const upvote = await upvoteLoader.load({
+      postId: post.id,
+      userId: req.session.userId,
+    });
+    return upvote ? upvote.value : null;
   }
 
   @Query(() => Post, { nullable: true })
@@ -105,23 +78,47 @@ export class PostResolver {
   }
 
   @Mutation(() => Post, { nullable: true })
+  @UseMiddleware(isAuth)
   async updatePost(
-    @Arg("id") id: number,
-    @Arg("title", () => String, { nullable: true }) title: string
+    @Arg("id", () => Int) id: number,
+    @Arg("title") title: string,
+    @Arg("text") text: string,
+    @Ctx() { req }: MyContext
   ): Promise<Post | null> {
     const post = await Post.findOne(id);
     if (!post) {
       return null;
     }
-    if (typeof title !== "undefined") {
-      post.title = title;
-      await Post.update({ id }, { title });
+    if (post.creatorId !== req.session.userId) {
+      throw new Error("not autherized");
     }
-    return post;
+    const result = await getConnection()
+      .createQueryBuilder()
+      .update(Post)
+      .set({ title, text })
+      .where('id = :id and "creatorId" = :creatorId', {
+        id,
+        creatorId: req.session.userId,
+      })
+      .returning("*")
+      .execute();
+    return result.raw[0];
   }
   @Mutation(() => Boolean)
-  async deletePost(@Arg("id") id: number): Promise<boolean> {
-    const deletePost = await Post.delete(id);
+  @UseMiddleware(isAuth)
+  async deletePost(
+    @Arg("id", () => Int) id: number,
+    @Ctx() { req }: MyContext
+  ): Promise<boolean> {
+    const post = await Post.findOne(id);
+    if (!post) {
+      return false;
+    }
+    if (post.creatorId !== req.session.userId) {
+      throw new Error("not autherized");
+    }
+    // await Upvote.delete({ postId: id });
+    const deletePost = await Post.delete({ id });
     if (!deletePost) {
       return false;
     }
@@ -157,9 +154,10 @@ export class PostResolver {
         update post 
         set points = points + $1
         where id = $2`,
-          [2 * realValue, postId]
+          [realValue, postId]
         );
       });
+      console.log("value", upvote.value);
     } else if (!upvote) {
       await getConnection().transaction(async (tm) => {
         await tm.query(
@@ -181,5 +179,34 @@ export class PostResolver {
     }
 
     return true;
+  }
+
+  @Query(() => PaginatedPosts)
+  async posts(
+    @Arg("limit", () => Int) limit: number,
+    @Arg("cursor", () => String, { nullable: true }) cursor: string | null
+  ): Promise<PaginatedPosts> {
+    const realLimit = Math.min(50, limit);
+    const realLimitPlusOne = realLimit + 1;
+    const replacements: any[] = [realLimitPlusOne];
+
+    if (cursor) {
+      replacements.push(new Date(parseInt(cursor)));
+    }
+
+    const posts = await getConnection().query(
+      `
+    select p.*
+    from post p
+    ${cursor ? `where p."createdAt" < $2` : ""}
+    order by p."createdAt" DESC
+    limit $1
+    `,
+      replacements
+    );
+    return {
+      posts: posts.slice(0, realLimit),
+      hasMore: posts.length === realLimitPlusOne,
+    };
   }
 }

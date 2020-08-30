@@ -11,7 +11,6 @@ const UpvoteSection: FC<IUpvoteSection> = ({ post }) => {
     "upvote-loading" | "downvote-loading" | "not-loading"
   >("not-loading");
   const [, vote] = useVoteMutation();
-  console.log(post.voteStatus);
   return (
     <Flex direction="column" alignItems="center" justifyContent="center" mr={3}>
       <IconButton
