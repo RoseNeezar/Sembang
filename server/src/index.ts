@@ -1,3 +1,4 @@
+import { Upvote } from "./entities/Upvote";
 import "reflect-metadata";
 import { UserResolver } from "./resolvers/user";
 import { PostResolver } from "./resolvers/post";
@@ -24,11 +25,12 @@ const main = async () => {
     logging: true,
     synchronize: true,
     migrations: [path.join(__dirname, "./migrations/*")],
-    entities: [User, Post],
+    entities: [User, Post, Upvote],
   });
   await conn.runMigrations();
 
   // await Post.delete({});
+  // await Upvote.delete({});
   const app = express();
 
   const RedisStore = connectRedis(session);
