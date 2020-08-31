@@ -1,23 +1,8 @@
-import Navbar from "../components/Navbar";
 import { withUrqlClient } from "next-urql";
 import { createUrqlClient } from "../utils/createUrqlClient";
-import {
-  usePostsQuery,
-  useDeletePostMutation,
-  useProfileQuery,
-} from "../generated/graphql";
+import { usePostsQuery } from "../generated/graphql";
 import Layout from "../components/Layout";
-import {
-  Link,
-  Stack,
-  Box,
-  Heading,
-  Text,
-  Flex,
-  Button,
-  Icon,
-  IconButton,
-} from "@chakra-ui/core";
+import { Link, Stack, Box, Heading, Text, Flex, Button } from "@chakra-ui/core";
 import NextLink from "next/link";
 import { useState } from "react";
 import UpvoteSection from "../components/UpvoteSection";
